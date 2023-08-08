@@ -285,6 +285,7 @@ int main(int argc, char **argv) {
 	oroCtx ctx;
 	e = oroCtxCreate(&ctx, 0, device);
 	oroDeviceProp props;
+
 	e = oroGetDeviceProperties(&props, device);
 	try {
 		vk::raii::Context context;
@@ -358,12 +359,14 @@ int main(int argc, char **argv) {
 		vk::ExternalMemoryBufferCreateInfo externalMemoryBufferCreateInfo(
 			vkExternalMemoryHandleType());
 		bufferCreateInfo.setPNext(&externalMemoryBufferCreateInfo);
+
 		vk::raii::Buffer deviceBuffer(device, bufferCreateInfo);
 		vk::raii::DeviceMemory deviceMemory =
 			vkExternalMalloc(device, physicalDevice.getMemoryProperties(),
 				deviceBuffer.getMemoryRequirements(),
 				vk::MemoryPropertyFlagBits::eDeviceLocal);
 		deviceBuffer.bindMemory(*deviceMemory, 0);
+
 		vk::DescriptorSetLayoutBinding descriptorSetLayoutBinding(
 			0, vk::DescriptorType::eStorageBuffer, 1,
 			vk::ShaderStageFlagBits::eCompute);
@@ -414,6 +417,14 @@ int main(int argc, char **argv) {
 			*deviceMemory, memorySize,
 			static_cast<VkExternalMemoryHandleTypeFlagBits>(
 				vkExternalMemoryHandleType()));
+
+		oroExternalMemory_t _externalMemory;
+		void* _deviceMemoryPp;
+		importPpExternalMemory( &_deviceMemoryPp, _externalMemory, device, *device,
+			*deviceMemory, memorySize,
+			static_cast<VkExternalMemoryHandleTypeFlagBits>( 
+				vkExternalMemoryHandleType() ) );
+
 		std::vector<float> hostMemory{};
 		hostMemory.resize(memorySize / sizeof(float));
 		oroMemcpyDtoH((void *)hostMemory.data(), (oroDeviceptr)deviceMemoryPp, memorySize);
@@ -424,7 +435,8 @@ int main(int argc, char **argv) {
 			if( i!=hostMemory[i] )
 				pass = false;
 		}
-		oroDestroyExternalMemory(externalMemory);
+		oroDestroyExternalMemory( externalMemory );
+		oroDestroyExternalMemory( _externalMemory );
 		if( pass )
 			std::cout << "PASS\n";
 		else
